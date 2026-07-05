@@ -14,10 +14,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(emails.router, prefix="/api/emails", tags=["emails"])
-app.include_router(assistant.router, prefix="/api/assistant", tags=["assistant"])
-app.include_router(realtime.router, prefix="/api/realtime", tags=["realtime"])
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(emails.router, prefix="/emails", tags=["emails"])
+app.include_router(assistant.router, prefix="/assistant", tags=["assistant"])
+app.include_router(realtime.router, prefix="/realtime", tags=["realtime"])
 
 
 @app.get("/api/health")
