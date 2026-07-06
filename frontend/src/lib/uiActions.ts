@@ -23,6 +23,8 @@ export function executeUIActions(actions: UIAction[], router: Router) {
         if (action.payload.to) params.set("to", action.payload.to);
         if (action.payload.subject) params.set("subject", action.payload.subject);
         if (action.payload.body) params.set("body", action.payload.body);
+        if (action.payload.reply_to_message_id)
+          params.set("reply_to", action.payload.reply_to_message_id);
         router.push(`/compose?${params}`);
         break;
       }

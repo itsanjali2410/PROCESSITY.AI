@@ -1,26 +1,49 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useRealtimeMail } from "@/hooks/useRealtimeMail";
 import type { EmailFilters, EmailSummary } from "@/lib/types";
 import { FilterBar } from "./FilterBar";
 
+// Filters live in the URL query string, so both the FilterBar and the
+// assistant's apply_filters action drive the list the same way.
 export function EmailList({ folder }: { folder: "inbox" | "sent" }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [emails, setEmails] = useState<EmailSummary[]>([]);
-  const [filters, setFilters] = useState<EmailFilters>({ folder });
   const [loading, setLoading] = useState(true);
+
+  const filters = useMemo<EmailFilters>(
+    () => ({
+      folder,
+      query: searchParams.get("query") ?? undefined,
+      sender: searchParams.get("sender") ?? undefined,
+      after: searchParams.get("after") ?? undefined,
+      before: searchParams.get("before") ?? undefined,
+      unread_only: searchParams.get("unread_only") === "true" || undefined,
+    }),
+    [searchParams, folder]
+  );
+
+  const setFilters = (next: EmailFilters) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(next)) {
+      if (value !== undefined && value !== "" && key !== "folder") params.set(key, String(value));
+    }
+    router.replace(`${pathname}?${params}`);
+  };
 
   const load = useCallback(() => {
     setLoading(true);
     api
-      .listEmails({ ...filters, folder })
+      .listEmails(filters)
       .then(setEmails)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [filters, folder]);
+  }, [filters]);
 
   useEffect(load, [load]);
   useRealtimeMail(load); // new mail appears without manual refresh

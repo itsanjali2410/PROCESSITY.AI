@@ -26,7 +26,10 @@ export interface EmailFilters {
 // Actions the assistant returns; the frontend executes them to drive the UI
 export type UIAction =
   | { type: "navigate"; payload: { path: string } }
-  | { type: "fill_compose"; payload: { to?: string; subject?: string; body?: string } }
+  | {
+      type: "fill_compose";
+      payload: { to?: string; subject?: string; body?: string; reply_to_message_id?: string };
+    }
   | { type: "apply_filters"; payload: EmailFilters }
   | { type: "open_email"; payload: { email_id: string } }
   | { type: "send_email"; payload: Record<string, never> };
