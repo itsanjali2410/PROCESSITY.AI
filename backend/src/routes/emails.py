@@ -1,42 +1,36 @@
-from typing import Optional
+from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
-from src.models.schemas import EmailDetail, EmailSummary, SendEmailRequest
+from src.core.deps import require_credentials
+from src.models.schemas import EmailDetail, EmailFilters, EmailSummary, SendEmailRequest
+from src.services import mail_service
 
 router = APIRouter()
 
 
 @router.get("/", response_model=list[EmailSummary])
 def list_emails(
-    folder: str = Query("inbox", pattern="^(inbox|sent)$"),
-    query: Optional[str] = None,
-    sender: Optional[str] = None,
-    after: Optional[str] = None,
-    before: Optional[str] = None,
-    unread_only: bool = False,
-    limit: int = 25,
+    filters: Annotated[EmailFilters, Query()],
+    creds=Depends(require_credentials),
 ):
     """List inbox/sent emails with optional filters (used by both UI and assistant)."""
-    # TODO: call mail_service.list_emails(...)
-    return []
+    return mail_service.list_emails(creds, filters)
 
 
 @router.get("/{email_id}", response_model=EmailDetail)
-def get_email(email_id: str):
+def get_email(email_id: str, creds=Depends(require_credentials)):
     """Fetch the full content of a single email."""
-    # TODO: call mail_service.get_email(email_id)
-    raise NotImplementedError
+    return mail_service.get_email(creds, email_id)
 
 
 @router.post("/send")
-def send_email(payload: SendEmailRequest):
+def send_email(payload: SendEmailRequest, creds=Depends(require_credentials)):
     """Send an email (also used for replies via reply_to_message_id)."""
-    # TODO: call mail_service.send_email(payload)
-    return {"ok": True}
+    return {"id": mail_service.send_email(creds, payload)}
 
 
 @router.post("/{email_id}/read")
-def mark_read(email_id: str):
-    # TODO: mark the message as read
+def mark_read(email_id: str, creds=Depends(require_credentials)):
+    mail_service.mark_read(creds, email_id)
     return {"ok": True}

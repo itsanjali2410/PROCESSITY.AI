@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class EmailSummary(BaseModel):
@@ -28,16 +28,17 @@ class SendEmailRequest(BaseModel):
 
 
 class EmailFilters(BaseModel):
+    folder: Literal["inbox", "sent"] = "inbox"
     query: Optional[str] = None
     sender: Optional[str] = None
     after: Optional[datetime] = None
     before: Optional[datetime] = None
     unread_only: bool = False
-    folder: str = "inbox"  # inbox | sent
+    limit: int = Field(25, ge=1, le=100)
 
 
 class AssistantMessage(BaseModel):
-    role: str  # user | assistant
+    role: Literal["user", "assistant"]
     content: str
 
 

@@ -12,13 +12,14 @@ export function ComposeForm() {
   const [to, setTo] = useState(params.get("to") ?? "");
   const [subject, setSubject] = useState(params.get("subject") ?? "");
   const [body, setBody] = useState(params.get("body") ?? "");
+  const replyTo = params.get("reply_to") ?? undefined;
   const [sending, setSending] = useState(false);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     setSending(true);
     try {
-      await api.sendEmail({ to, subject, body });
+      await api.sendEmail({ to, subject, body, reply_to_message_id: replyTo });
       router.push("/sent");
     } catch (err) {
       console.error(err);

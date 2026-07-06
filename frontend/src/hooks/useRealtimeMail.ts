@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000/api/realtime/ws";
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000/realtime/ws";
 
 /** Subscribes to the backend websocket and fires the callback on new mail. */
 export function useRealtimeMail(onNewEmail: () => void) {

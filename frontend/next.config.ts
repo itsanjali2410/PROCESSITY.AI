@@ -1,14 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/:path*`,
-      },
-    ];
-  },
+  // Pin the workspace root: a stray lockfile in the home directory makes
+  // Next.js guess wrong otherwise
+  outputFileTracingRoot: __dirname,
 };
 
 export default nextConfig;

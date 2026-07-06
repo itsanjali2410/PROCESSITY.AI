@@ -20,6 +20,6 @@ app.include_router(assistant.router, prefix="/assistant", tags=["assistant"])
 app.include_router(realtime.router, prefix="/realtime", tags=["realtime"])
 
 
-@app.get("/api/health")
+@app.get("/health")
 def health():
     return {"status": "ok"}
