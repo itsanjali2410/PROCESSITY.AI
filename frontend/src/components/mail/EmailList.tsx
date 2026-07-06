@@ -16,6 +16,7 @@ export function EmailList({ folder }: { folder: "inbox" | "sent" }) {
   const searchParams = useSearchParams();
   const [emails, setEmails] = useState<EmailSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(false);
 
   const filters = useMemo<EmailFilters>(
     () => ({
@@ -47,12 +48,19 @@ export function EmailList({ folder }: { folder: "inbox" | "sent" }) {
   }, [filters]);
 
   useEffect(load, [load]);
-  useRealtimeMail(load); // new mail appears without manual refresh
+
+  // New mail appears without manual refresh, with a brief notice
+  useRealtimeMail(() => {
+    load();
+    setToast(true);
+    setTimeout(() => setToast(false), 4000);
+  });
 
   const unread = emails.filter((e) => !e.is_read).length;
 
   return (
     <div className="list-page">
+      {toast && <div className="toast">New email received</div>}
       <div className="list-header">
         <h1>{folder}</h1>
         <span className="list-count">

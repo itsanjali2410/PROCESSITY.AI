@@ -18,6 +18,12 @@ def list_emails(
     return mail_service.list_emails(creds, filters)
 
 
+@router.get("/thread/{thread_id}", response_model=list[EmailDetail])
+def get_thread(thread_id: str, creds=Depends(require_credentials)):
+    """All messages of a conversation, oldest first."""
+    return mail_service.get_thread(creds, thread_id)
+
+
 @router.get("/{email_id}", response_model=EmailDetail)
 def get_email(email_id: str, creds=Depends(require_credentials)):
     """Fetch the full content of a single email."""

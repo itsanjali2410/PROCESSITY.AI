@@ -26,6 +26,10 @@ export const api = {
 
   getEmail: (id: string) => request<EmailDetail>(`/emails/${id}`),
 
+  getThread: (threadId: string) => request<EmailDetail[]>(`/emails/thread/${threadId}`),
+
+  markRead: (id: string) => request<{ ok: boolean }>(`/emails/${id}/read`, { method: "POST" }),
+
   sendEmail: (payload: { to: string; subject: string; body: string; reply_to_message_id?: string }) =>
     request<{ id: string }>("/emails/send", { method: "POST", body: JSON.stringify(payload) }),
 

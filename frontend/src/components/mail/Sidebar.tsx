@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { api } from "@/lib/api";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const links = [
   { href: "/inbox", label: "Inbox" },
@@ -40,6 +41,7 @@ export function Sidebar() {
       ))}
       <div className="sidebar-footer">
         {email && <div className="user-email">{email}</div>}
+        <ThemeToggle />
         <button className="logout-btn" onClick={handleLogout}>
           Sign out
         </button>

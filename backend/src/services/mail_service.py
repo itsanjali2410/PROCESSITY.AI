@@ -97,12 +97,35 @@ def _extract_bodies(payload: dict) -> tuple[str | None, str | None]:
     return text, html
 
 
-def get_email(creds: Credentials, email_id: str) -> EmailDetail:
-    msg = _gmail(creds).users().messages().get(userId="me", id=email_id, format="full").execute()
+def _to_detail(msg: dict) -> EmailDetail:
     text, html = _extract_bodies(msg["payload"])
     summary = _to_summary(msg)
     to = [addr.strip() for addr in _header(msg["payload"], "To").split(",") if addr.strip()]
     return EmailDetail(**summary.model_dump(), to=to, body_text=text, body_html=html)
+
+
+def get_email(creds: Credentials, email_id: str) -> EmailDetail:
+    msg = _gmail(creds).users().messages().get(userId="me", id=email_id, format="full").execute()
+    return _to_detail(msg)
+
+
+def get_thread(creds: Credentials, thread_id: str) -> list[EmailDetail]:
+    """All messages of a conversation, oldest first."""
+    thread = _gmail(creds).users().threads().get(userId="me", id=thread_id, format="full").execute()
+    return [_to_detail(msg) for msg in thread.get("messages", [])]
+
+
+def latest_inbox_message_id(creds: Credentials) -> str | None:
+    """Cheap probe used by the real-time poller."""
+    resp = (
+        _gmail(creds)
+        .users()
+        .messages()
+        .list(userId="me", labelIds=["INBOX"], maxResults=1)
+        .execute()
+    )
+    messages = resp.get("messages", [])
+    return messages[0]["id"] if messages else None
 
 
 def send_email(creds: Credentials, payload: SendEmailRequest) -> str:

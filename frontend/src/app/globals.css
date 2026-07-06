@@ -15,8 +15,10 @@
   --radius: 12px;
 }
 
+/* Dark theme: follows the system by default; the in-app toggle sets
+   data-theme and overrides it in either direction. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #101216;
     --surface: #181b21;
     --surface-2: #1f232b;
@@ -30,6 +32,21 @@
     --danger: #f87171;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.35);
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #101216;
+  --surface: #181b21;
+  --surface-2: #1f232b;
+  --ink: #e9e7e1;
+  --muted: #98958c;
+  --border: #2a2e37;
+  --accent: #2dd4bf;
+  --accent-ink: #08302b;
+  --accent-soft: rgba(45, 212, 191, 0.12);
+  --unread: #fbbf24;
+  --danger: #f87171;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 /* ---------- Base ---------- */
@@ -388,7 +405,7 @@ textarea::placeholder {
   margin-bottom: 8px;
 }
 
-/* ---------- Detail view ---------- */
+/* ---------- Detail / thread view ---------- */
 .detail {
   padding: 22px 26px;
   max-width: 760px;
@@ -398,31 +415,72 @@ textarea::placeholder {
 .detail h1 {
   font-size: 20px;
   letter-spacing: -0.02em;
-  margin: 10px 0 14px;
+  margin: 14px 0 4px;
 }
 
-.detail-meta {
+.detail-toolbar {
+  display: flex;
+  justify-content: space-between;
+}
+
+.thread-count {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.thread {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.thread-msg {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  animation: rise 0.25s ease both;
+  transition: border-color 0.15s;
+}
+
+.thread-msg:not(.open):hover {
+  border-color: var(--accent);
+}
+
+.thread-msg-head {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 18px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
 }
 
-.detail-meta .who {
+.thread-msg-head .who {
   flex: 1;
   min-width: 0;
 }
 
-.detail-meta .name {
+.thread-msg-head .name {
   font-weight: 650;
 }
 
-.detail-meta .addr,
-.detail-meta .when {
+.thread-msg-head .addr {
   color: var(--muted);
   font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread-msg-head .when {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.thread-msg .detail-body {
+  padding: 0 14px 16px 64px;
 }
 
 .detail-body {
@@ -432,6 +490,23 @@ textarea::placeholder {
 .detail-body pre {
   white-space: pre-wrap;
   font-family: inherit;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  z-index: 10;
+  animation: rise 0.25s ease both;
 }
 
 /* ---------- Compose ---------- */
