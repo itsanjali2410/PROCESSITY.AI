@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from email_validator import EmailNotValidError, validate_email
 from google.oauth2.credentials import Credentials
-from openai import OpenAI
+from openai import APIStatusError, OpenAI, RateLimitError
 
 from src.core.config import settings
 from src.models.schemas import (
@@ -92,8 +92,10 @@ TOOLS = [
         "function": {
             "name": "send_email",
             "description": (
-                "Actually send an email. Only call this after the user has "
-                "confirmed they want it sent."
+                "Actually send an email. NEVER call this in the same turn as "
+                "fill_compose, and never on the first request. Only call it "
+                "after you asked for confirmation and the user's latest "
+                "message explicitly confirms (e.g. 'yes, send it')."
             ),
             "parameters": {
                 "type": "object",
@@ -122,7 +124,10 @@ When replying, use get_email to read the original, address the reply to its send
 prefix the subject with "Re:", and pass reply_to_message_id.
 - Recipient addresses must be complete (name@domain.tld). If the user gives a partial \
 or missing address, ask for the full one — never guess or invent an address.
-- Ask the user to confirm before calling send_email.
+- Sending is a strict two-step flow: when asked to send an email, first call \
+fill_compose and end your turn asking "Should I send it?". Only call send_email in a \
+later turn, after the user has explicitly confirmed. The user can also click Send \
+themselves in the form.
 - Keep text replies short — the UI shows the results, you just narrate."""
 
 
@@ -142,10 +147,26 @@ def _invalid_recipient(args: dict) -> dict | None:
         }
 
 
-def _execute_tool(creds: Credentials, name: str, args: dict, actions: list[UIAction]) -> dict:
+def _execute_tool(
+    creds: Credentials,
+    name: str,
+    args: dict,
+    actions: list[UIAction],
+    send_allowed: bool,
+) -> dict:
     """Run one tool call: query real data and/or record a UI action."""
     if name in ("fill_compose", "send_email") and (error := _invalid_recipient(args)):
         return error
+
+    # Human-in-the-loop: sending requires a prior draft + confirmation turn.
+    if name == "send_email" and (
+        not send_allowed or any(a.type == "fill_compose" for a in actions)
+    ):
+        return {
+            "error": "Sending is not allowed yet. Call fill_compose to draft the "
+            "email, then ask the user to confirm. Only send after they confirm "
+            "in a later message (or they can click Send themselves)."
+        }
 
     if name == "search_emails":
         filters = EmailFilters(**{k: v for k, v in args.items() if v})
@@ -194,13 +215,30 @@ def run(creds: Credentials, payload: AssistantRequest) -> AssistantResponse:
         {"role": m.role, "content": m.content} for m in payload.messages
     ]
 
+    # Sending is only possible once a previous assistant turn exists — i.e.
+    # the model has already drafted and asked, and the user replied.
+    send_allowed = any(m.role == "assistant" for m in payload.messages)
+
     actions: list[UIAction] = []
     for _ in range(MAX_TOOL_ROUNDS):
-        response = client.chat.completions.create(
-            model=settings.LLM_MODEL,
-            messages=messages,
-            tools=TOOLS,
-        )
+        try:
+            response = client.chat.completions.create(
+                model=settings.LLM_MODEL,
+                messages=messages,
+                tools=TOOLS,
+            )
+        except RateLimitError:
+            return AssistantResponse(
+                message="The AI provider's rate limit was hit. Please wait a "
+                "minute and try again.",
+                actions=actions,
+            )
+        except APIStatusError as exc:
+            return AssistantResponse(
+                message=f"The AI provider returned an error ({exc.status_code}). "
+                "Please try again.",
+                actions=actions,
+            )
         choice = response.choices[0].message
 
         if not choice.tool_calls:
@@ -210,7 +248,7 @@ def run(creds: Credentials, payload: AssistantRequest) -> AssistantResponse:
         for call in choice.tool_calls:
             args = json.loads(call.function.arguments or "{}")
             try:
-                result = _execute_tool(creds, call.function.name, args, actions)
+                result = _execute_tool(creds, call.function.name, args, actions, send_allowed)
             except Exception as exc:  # surface tool failures to the model
                 result = {"error": str(exc)}
             messages.append(

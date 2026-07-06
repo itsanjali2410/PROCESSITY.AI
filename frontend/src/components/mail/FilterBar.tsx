@@ -1,6 +1,7 @@
 "use client";
 
 import type { EmailFilters } from "@/lib/types";
+import { toDateInput } from "@/lib/format";
 
 export function FilterBar({
   filters,
@@ -9,36 +10,47 @@ export function FilterBar({
   filters: EmailFilters;
   onChange: (filters: EmailFilters) => void;
 }) {
+  const hasFilters = Boolean(
+    filters.query || filters.sender || filters.after || filters.before || filters.unread_only
+  );
+
   return (
-    <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+    <div className="filter-bar">
       <input
-        placeholder="Search…"
+        placeholder="Search"
         value={filters.query ?? ""}
-        onChange={(e) => onChange({ ...filters, query: e.target.value })}
+        onChange={(e) => onChange({ ...filters, query: e.target.value || undefined })}
       />
       <input
         placeholder="From (sender)"
         value={filters.sender ?? ""}
-        onChange={(e) => onChange({ ...filters, sender: e.target.value })}
+        onChange={(e) => onChange({ ...filters, sender: e.target.value || undefined })}
       />
       <input
         type="date"
-        value={filters.after ?? ""}
-        onChange={(e) => onChange({ ...filters, after: e.target.value })}
+        title="From date"
+        value={toDateInput(filters.after)}
+        onChange={(e) => onChange({ ...filters, after: e.target.value || undefined })}
       />
       <input
         type="date"
-        value={filters.before ?? ""}
-        onChange={(e) => onChange({ ...filters, before: e.target.value })}
+        title="To date"
+        value={toDateInput(filters.before)}
+        onChange={(e) => onChange({ ...filters, before: e.target.value || undefined })}
       />
-      <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <label className="filter-check">
         <input
           type="checkbox"
           checked={filters.unread_only ?? false}
-          onChange={(e) => onChange({ ...filters, unread_only: e.target.checked })}
+          onChange={(e) => onChange({ ...filters, unread_only: e.target.checked || undefined })}
         />
-        Unread only
+        Unread
       </label>
+      {hasFilters && (
+        <button className="btn btn-ghost" onClick={() => onChange({ folder: filters.folder })}>
+          Clear
+        </button>
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ could be swapped (e.g. Microsoft Graph) without touching the API surface.
 """
 
 import base64
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
 from google.oauth2.credentials import Credentials
@@ -31,7 +31,8 @@ def _build_query(f: EmailFilters) -> str:
     if f.after:
         parts.append(f"after:{f.after:%Y/%m/%d}")
     if f.before:
-        parts.append(f"before:{f.before:%Y/%m/%d}")
+        # Gmail's before: is exclusive — add a day so the picked date is included
+        parts.append(f"before:{f.before + timedelta(days=1):%Y/%m/%d}")
     if f.unread_only:
         parts.append("is:unread")
     return " ".join(parts)

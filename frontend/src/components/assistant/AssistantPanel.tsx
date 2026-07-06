@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { executeUIActions } from "@/lib/uiActions";
@@ -10,23 +10,32 @@ interface ChatMessage {
   content: string;
 }
 
+const SUGGESTIONS = [
+  "Show unread emails from this week",
+  "Show me emails from the last 10 days",
+  "Draft an email to someone@gmail.com",
+];
+
 export function AssistantPanel() {
   const router = useRouter();
   const pathname = usePathname();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Context awareness: derive current view + open email from the URL
   const openEmailId = pathname.startsWith("/email/") ? pathname.split("/")[2] : undefined;
   const currentView = openEmailId ? "email_detail" : pathname.replace("/", "") || "inbox";
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || busy) return;
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, busy]);
 
-    const nextMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
+  async function send(text: string) {
+    if (!text.trim() || busy) return;
+
+    const nextMessages: ChatMessage[] = [...messages, { role: "user", content: text.trim() }];
     setMessages(nextMessages);
     setInput("");
     setBusy(true);
@@ -42,7 +51,7 @@ export function AssistantPanel() {
     } catch (err) {
       setMessages([
         ...nextMessages,
-        { role: "assistant", content: "Sorry, something went wrong." },
+        { role: "assistant", content: "Sorry, something went wrong. Please try again." },
       ]);
       console.error(err);
     } finally {
@@ -51,53 +60,52 @@ export function AssistantPanel() {
   }
 
   return (
-    <aside
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        background: "#fafafa",
-      }}
-    >
-      <header style={{ padding: 12, borderBottom: "1px solid #e5e5e5", fontWeight: 600 }}>
-        AI Assistant
-      </header>
-      <div style={{ flex: 1, overflowY: "auto", padding: 12, display: "grid", gap: 8, alignContent: "start" }}>
+    <aside className="assistant">
+      <header className="assistant-header">Assistant</header>
+      <div className="assistant-body">
         {messages.length === 0 && (
-          <p style={{ color: "#888", fontSize: 13 }}>
-            Try: “Send an email to john@example.com about the meeting” or “Show unread emails from
-            this week”.
-          </p>
+          <>
+            <p className="assistant-hint">
+              I can drive the app for you: search and filter your mail, open emails, draft
+              replies, and send. Try one of these:
+            </p>
+            <div className="chips">
+              {SUGGESTIONS.map((s) => (
+                <button key={s} className="chip" onClick={() => send(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </>
         )}
         {messages.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              justifySelf: m.role === "user" ? "end" : "start",
-              background: m.role === "user" ? "#1a73e8" : "#fff",
-              color: m.role === "user" ? "#fff" : "#222",
-              border: "1px solid #e5e5e5",
-              borderRadius: 8,
-              padding: "8px 10px",
-              maxWidth: "85%",
-              fontSize: 14,
-              whiteSpace: "pre-wrap",
-            }}
-          >
+          <div key={i} className={`bubble ${m.role}`}>
             {m.content}
           </div>
         ))}
-        {busy && <p style={{ color: "#888", fontSize: 13 }}>Thinking…</p>}
+        {busy && (
+          <div className="typing">
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
+        <div ref={bottomRef} />
       </div>
-      <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, padding: 12, borderTop: "1px solid #e5e5e5" }}>
+      <form
+        className="assistant-input"
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(input);
+        }}
+      >
         <input
-          style={{ flex: 1 }}
           placeholder="Ask the assistant…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={busy}
         />
-        <button type="submit" disabled={busy}>
+        <button type="submit" className="btn btn-primary" disabled={busy || !input.trim()}>
           Send
         </button>
       </form>

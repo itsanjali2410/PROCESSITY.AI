@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { EmailDetail as EmailDetailType } from "@/lib/types";
+import { formatFullDate, hueOf, senderAddress, senderName } from "@/lib/format";
 
 export function EmailDetail({ emailId }: { emailId: string }) {
   const router = useRouter();
@@ -13,31 +14,44 @@ export function EmailDetail({ emailId }: { emailId: string }) {
     api.getEmail(emailId).then(setEmail).catch(console.error);
   }, [emailId]);
 
-  if (!email) return <p style={{ padding: 16 }}>Loading…</p>;
+  if (!email) return <p className="loading-screen">Loading…</p>;
+
+  const name = senderName(email.sender);
+  const hue = hueOf(email.sender);
+  const replyHref =
+    `/compose?to=${encodeURIComponent(senderAddress(email.sender))}` +
+    `&subject=${encodeURIComponent(`Re: ${email.subject}`)}` +
+    `&reply_to=${encodeURIComponent(email.id)}`;
 
   return (
-    <article style={{ padding: 16 }}>
-      <h1>{email.subject}</h1>
-      <p style={{ color: "#666", margin: "8px 0" }}>
-        From {email.sender} · {new Date(email.date).toLocaleString()}
-      </p>
-      <button
-        onClick={() =>
-          router.push(
-            `/compose?to=${encodeURIComponent(email.sender)}&subject=${encodeURIComponent(
-              `Re: ${email.subject}`
-            )}`
-          )
-        }
-      >
-        Reply
+    <article className="detail">
+      <button className="btn btn-ghost" onClick={() => router.back()}>
+        Back
       </button>
-      <hr style={{ margin: "16px 0" }} />
-      {email.body_html ? (
-        <div dangerouslySetInnerHTML={{ __html: email.body_html }} />
-      ) : (
-        <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}>{email.body_text}</pre>
-      )}
+      <h1>{email.subject}</h1>
+      <div className="detail-meta">
+        <span
+          className="avatar"
+          style={{ background: `hsl(${hue} 60% 88%)`, color: `hsl(${hue} 55% 30%)` }}
+        >
+          {name.charAt(0).toUpperCase()}
+        </span>
+        <div className="who">
+          <div className="name">{name}</div>
+          <div className="addr">{senderAddress(email.sender)}</div>
+          <div className="when">{formatFullDate(email.date)}</div>
+        </div>
+        <button className="btn btn-primary" onClick={() => router.push(replyHref)}>
+          Reply
+        </button>
+      </div>
+      <div className="detail-body">
+        {email.body_html ? (
+          <div dangerouslySetInnerHTML={{ __html: email.body_html }} />
+        ) : (
+          <pre>{email.body_text}</pre>
+        )}
+      </div>
     </article>
   );
 }

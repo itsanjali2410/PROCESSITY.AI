@@ -20,26 +20,18 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (checking) {
-    return <p style={{ padding: 32 }}>Loading…</p>;
+    return <p className="loading-screen">Loading…</p>;
   }
 
   if (!email) {
     return (
-      <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>
-        <div style={{ textAlign: "center", display: "grid", gap: 16 }}>
-          <h1>Processity Mail</h1>
-          <p style={{ color: "#666" }}>AI-powered mail client. Sign in to continue.</p>
-          <a
-            href={`${API_URL}/auth/login`}
-            style={{
-              padding: "10px 24px",
-              background: "#1a73e8",
-              color: "#fff",
-              borderRadius: 6,
-              textDecoration: "none",
-              justifySelf: "center",
-            }}
-          >
+      <div className="auth-screen">
+        <div className="auth-card">
+          <h1>
+            <span className="brand-dot" /> Processity Mail
+          </h1>
+          <p>Your inbox, driven by an AI copilot. Sign in to continue.</p>
+          <a className="btn btn-primary" style={{ justifySelf: "center" }} href={`${API_URL}/auth/login`}>
             Sign in with Google
           </a>
         </div>
