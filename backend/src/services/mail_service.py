@@ -12,6 +12,21 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 from src.models.schemas import EmailDetail, EmailFilters, EmailSummary, SendEmailRequest
+from src.services.cache import TTLCache
+
+# Lists/threads change as mail arrives -> short TTL. Message bodies are
+# immutable (only labels change) -> longer TTL. All are invalidated on writes
+# and when the realtime poller sees new mail.
+_list_cache = TTLCache(ttl_seconds=30)
+_thread_cache = TTLCache(ttl_seconds=30)
+_detail_cache = TTLCache(ttl_seconds=300)
+
+
+def invalidate_caches() -> None:
+    """Drop cached mail state after any change (send, read, new mail)."""
+    _list_cache.clear()
+    _thread_cache.clear()
+    _detail_cache.clear()
 
 
 def _gmail(creds: Credentials):
@@ -56,12 +71,18 @@ def _to_summary(msg: dict) -> EmailSummary:
 
 
 def list_emails(creds: Credentials, filters: EmailFilters) -> list[EmailSummary]:
+    cache_key = filters.model_dump_json()
+    if (cached := _list_cache.get(cache_key)) is not None:
+        return cached
     gmail = _gmail(creds)
     label = "SENT" if filters.folder == "sent" else "INBOX"
+    query = _build_query(filters)
+    if filters.folder == "inbox":
+        query = f"{query} -from:me".strip()  # own replies belong in Sent, not Inbox
     resp = (
         gmail.users()
         .messages()
-        .list(userId="me", labelIds=[label], q=_build_query(filters), maxResults=filters.limit)
+        .list(userId="me", labelIds=[label], q=query, maxResults=filters.limit)
         .execute()
     )
     summaries = []
@@ -73,6 +94,8 @@ def list_emails(creds: Credentials, filters: EmailFilters) -> list[EmailSummary]
             .execute()
         )
         summaries.append(_to_summary(msg))
+    summaries.sort(key=lambda s: s.date, reverse=True)  # strictly newest first
+    _list_cache.set(cache_key, summaries)
     return summaries
 
 
@@ -105,14 +128,23 @@ def _to_detail(msg: dict) -> EmailDetail:
 
 
 def get_email(creds: Credentials, email_id: str) -> EmailDetail:
+    if (cached := _detail_cache.get(email_id)) is not None:
+        return cached
     msg = _gmail(creds).users().messages().get(userId="me", id=email_id, format="full").execute()
-    return _to_detail(msg)
+    detail = _to_detail(msg)
+    _detail_cache.set(email_id, detail)
+    return detail
 
 
 def get_thread(creds: Credentials, thread_id: str) -> list[EmailDetail]:
     """All messages of a conversation, oldest first."""
+    if (cached := _thread_cache.get(thread_id)) is not None:
+        return cached
     thread = _gmail(creds).users().threads().get(userId="me", id=thread_id, format="full").execute()
-    return [_to_detail(msg) for msg in thread.get("messages", [])]
+    details = [_to_detail(msg) for msg in thread.get("messages", [])]
+    details.sort(key=lambda d: d.date)  # conversation reads oldest -> newest
+    _thread_cache.set(thread_id, details)
+    return details
 
 
 def latest_inbox_message_id(creds: Credentials) -> str | None:
@@ -151,10 +183,13 @@ def send_email(creds: Credentials, payload: SendEmailRequest) -> str:
         body["threadId"] = orig.get("threadId")
 
     body["raw"] = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-    return gmail.users().messages().send(userId="me", body=body).execute()["id"]
+    sent_id = gmail.users().messages().send(userId="me", body=body).execute()["id"]
+    invalidate_caches()
+    return sent_id
 
 
 def mark_read(creds: Credentials, email_id: str) -> None:
     _gmail(creds).users().messages().modify(
         userId="me", id=email_id, body={"removeLabelIds": ["UNREAD"]}
     ).execute()
+    invalidate_caches()

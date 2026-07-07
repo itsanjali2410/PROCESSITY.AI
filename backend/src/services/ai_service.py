@@ -1,5 +1,6 @@
 
 import json
+import re
 from datetime import datetime, timezone
 
 from email_validator import EmailNotValidError, validate_email
@@ -147,6 +148,12 @@ def _invalid_recipient(args: dict) -> dict | None:
         }
 
 
+def _normalize_subject(args: dict) -> None:
+    """Collapse stacked reply prefixes: 'Re: Re: X' -> 'Re: X'."""
+    if subject := args.get("subject"):
+        args["subject"] = re.sub(r"^(\s*re:\s*)+", "Re: ", subject, flags=re.IGNORECASE)
+
+
 def _execute_tool(
     creds: Credentials,
     name: str,
@@ -155,8 +162,10 @@ def _execute_tool(
     send_allowed: bool,
 ) -> dict:
     """Run one tool call: query real data and/or record a UI action."""
-    if name in ("fill_compose", "send_email") and (error := _invalid_recipient(args)):
-        return error
+    if name in ("fill_compose", "send_email"):
+        if error := _invalid_recipient(args):
+            return error
+        _normalize_subject(args)
 
     # Human-in-the-loop: sending requires a prior draft + confirmation turn.
     if name == "send_email" and (
@@ -242,7 +251,7 @@ def run(creds: Credentials, payload: AssistantRequest) -> AssistantResponse:
         choice = response.choices[0].message
 
         if not choice.tool_calls:
-            return AssistantResponse(message=choice.content or "", actions=actions)
+            return AssistantResponse(message=(choice.content or "").strip(), actions=actions)
 
         messages.append(choice)
         for call in choice.tool_calls:

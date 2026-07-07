@@ -59,6 +59,7 @@ async def poll_inbox() -> None:
             logger.warning("inbox poll failed: %s", exc)
             continue
         if latest and last_seen_id and latest != last_seen_id:
+            mail_service.invalidate_caches()  # so the refetch sees the new mail
             await _broadcast({"type": "new_email"})
         if latest:
             last_seen_id = latest

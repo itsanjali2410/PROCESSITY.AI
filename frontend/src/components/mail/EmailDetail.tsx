@@ -3,64 +3,55 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { invalidateCache, useCached } from "@/lib/cache";
 import type { EmailDetail as EmailDetailType } from "@/lib/types";
 import { formatFullDate, hueOf, senderAddress, senderName } from "@/lib/format";
 
-function MessageBody({ email }: { email: EmailDetailType }) {
-  return email.body_html ? (
-    <div dangerouslySetInnerHTML={{ __html: email.body_html }} />
+function MessageBody({ message }: { message: EmailDetailType }) {
+  return message.body_html ? (
+    <div dangerouslySetInnerHTML={{ __html: message.body_html }} />
   ) : (
-    <pre>{email.body_text}</pre>
+    <pre>{message.body_text}</pre>
   );
 }
 
-// Conversation view: shows the whole Gmail thread, oldest first.
-// Earlier messages are collapsed; the opened email is expanded.
 export function EmailDetail({ emailId }: { emailId: string }) {
   const router = useRouter();
-  const [thread, setThread] = useState<EmailDetailType[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
 
+  const { data: email } = useCached(`email:${emailId}`, () => api.getEmail(emailId));
+  const threadId = email?.thread_id;
+  const { data: thread = [] } = useCached(`thread:${threadId ?? "none"}`, () =>
+    threadId ? api.getThread(threadId) : Promise.resolve([])
+  );
+
+  // Opening an email marks it read; refresh cached lists so unread state syncs
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const email = await api.getEmail(emailId);
-        const messages = email.thread_id ? await api.getThread(email.thread_id) : [email];
-        if (cancelled) return;
-        setThread(messages);
-        setExpanded(new Set([emailId, messages[messages.length - 1]?.id]));
-        api.markRead(emailId).catch(() => {});
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    api
+      .markRead(emailId)
+      .then(() => invalidateCache("emails:"))
+      .catch(() => {});
   }, [emailId]);
 
-  if (loading) return <p className="loading-screen">Loading…</p>;
-  if (thread.length === 0) return <p className="loading-screen">Email not found.</p>;
+  if (!email) return <p className="loading-screen">Loading</p>;
 
-  const subject = thread[0].subject;
-  const last = thread[thread.length - 1];
-  const replyHref =
-    `/compose?to=${encodeURIComponent(senderAddress(last.sender))}` +
-    `&subject=${encodeURIComponent(subject.startsWith("Re:") ? subject : `Re: ${subject}`)}` +
-    `&reply_to=${encodeURIComponent(last.id)}`;
+  // Conversation view: every message in the thread, older ones collapsed
+  const messages = thread.length > 0 ? thread : [email];
+  const isConversation = messages.length > 1;
 
-  function toggle(id: string) {
+  const toggle = (id: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  }
+
+  const replyTarget = messages[messages.length - 1];
+  const replyHref =
+    `/compose?to=${encodeURIComponent(senderAddress(replyTarget.sender))}` +
+    `&subject=${encodeURIComponent(`Re: ${email.subject.replace(/^(\s*re:\s*)+/i, "")}`)}` +
+    `&reply_to=${encodeURIComponent(replyTarget.id)}`;
 
   return (
     <article className="detail">
@@ -72,46 +63,47 @@ export function EmailDetail({ emailId }: { emailId: string }) {
           Reply
         </button>
       </div>
-      <h1>{subject}</h1>
-      {thread.length > 1 && (
-        <p className="thread-count">{thread.length} messages in this conversation</p>
-      )}
-      <div className="thread">
-        {thread.map((message) => {
-          const name = senderName(message.sender);
-          const hue = hueOf(message.sender);
-          const isOpen = expanded.has(message.id) || thread.length === 1;
-          return (
-            <section key={message.id} className={`thread-msg ${isOpen ? "open" : ""}`}>
-              <header className="thread-msg-head" onClick={() => toggle(message.id)}>
-                <span
-                  className="avatar"
-                  style={{ background: `hsl(${hue} 60% 88%)`, color: `hsl(${hue} 55% 30%)` }}
-                >
-                  {name.charAt(0).toUpperCase()}
-                </span>
-                <div className="who">
-                  <div className="name">{name}</div>
-                  {isOpen ? (
-                    <div className="addr">
-                      {senderAddress(message.sender)}
-                      {message.to.length > 0 && ` to ${message.to.join(", ")}`}
-                    </div>
-                  ) : (
-                    <div className="addr">{message.preview}</div>
-                  )}
-                </div>
-                <span className="when">{formatFullDate(message.date)}</span>
-              </header>
-              {isOpen && (
-                <div className="detail-body">
-                  <MessageBody email={message} />
-                </div>
-              )}
-            </section>
-          );
-        })}
-      </div>
+      <h1>
+        {email.subject}
+        {isConversation && <span className="thread-count"> {messages.length} messages</span>}
+      </h1>
+
+      {messages.map((message, i) => {
+        const name = senderName(message.sender);
+        const hue = hueOf(message.sender);
+        const isLast = i === messages.length - 1;
+        const isOpen = !isConversation || isLast || expanded.has(message.id);
+
+        return (
+          <section key={message.id} className={`thread-msg ${isOpen ? "open" : ""}`}>
+            <header
+              className="thread-msg-head"
+              onClick={() => isConversation && !isLast && toggle(message.id)}
+            >
+              <span
+                className="avatar"
+                style={{ background: `hsl(${hue} 60% 88%)`, color: `hsl(${hue} 55% 30%)` }}
+              >
+                {name.charAt(0).toUpperCase()}
+              </span>
+              <div className="who">
+                <div className="name">{name}</div>
+                {isOpen ? (
+                  <div className="addr">{senderAddress(message.sender)}</div>
+                ) : (
+                  <div className="addr">{(message.body_text ?? "").slice(0, 90)}</div>
+                )}
+              </div>
+              <div className="when">{formatFullDate(message.date)}</div>
+            </header>
+            {isOpen && (
+              <div className="detail-body">
+                <MessageBody message={message} />
+              </div>
+            )}
+          </section>
+        );
+      })}
     </article>
   );
 }

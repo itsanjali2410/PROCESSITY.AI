@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import "@fontsource/instrument-serif/400.css";
+import "@fontsource/instrument-serif/400-italic.css";
+import "@fontsource-variable/inter";
 import "./globals.css";
 import { Sidebar } from "@/components/mail/Sidebar";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";

@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { invalidateCache, useCached } from "@/lib/cache";
 import { useRealtimeMail } from "@/hooks/useRealtimeMail";
-import type { EmailFilters, EmailSummary } from "@/lib/types";
+import type { EmailFilters } from "@/lib/types";
 import { formatEmailDate, hueOf, senderName } from "@/lib/format";
 import { FilterBar } from "./FilterBar";
 
@@ -14,8 +15,6 @@ export function EmailList({ folder }: { folder: "inbox" | "sent" }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [emails, setEmails] = useState<EmailSummary[]>([]);
-  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(false);
 
   const filters = useMemo<EmailFilters>(
@@ -38,20 +37,17 @@ export function EmailList({ folder }: { folder: "inbox" | "sent" }) {
     router.replace(`${pathname}?${params}`);
   };
 
-  const load = useCallback(() => {
-    setLoading(true);
-    api
-      .listEmails(filters)
-      .then(setEmails)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [filters]);
+  // Stale-while-revalidate: cached lists render instantly on revisit while a
+  // background fetch keeps them fresh. "loading" only shows on first load.
+  const cacheKey = `emails:${folder}?${searchParams.toString()}`;
+  const { data: emails = [], loading, refresh } = useCached(cacheKey, () =>
+    api.listEmails(filters)
+  );
 
-  useEffect(load, [load]);
-
-  // New mail appears without manual refresh, with a brief notice
+  // New mail: drop all cached lists, refetch this one, show a brief notice
   useRealtimeMail(() => {
-    load();
+    invalidateCache("emails:");
+    refresh();
     setToast(true);
     setTimeout(() => setToast(false), 4000);
   });

@@ -1,5 +1,7 @@
 /* ---------- Design tokens ---------- */
 :root {
+  --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: "Instrument Serif", Georgia, serif;
   --bg: #f6f5f1;
   --surface: #ffffff;
   --surface-2: #efede8;
@@ -62,7 +64,7 @@ body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--ink);
   font-size: 14px;
@@ -195,10 +197,11 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
-  font-weight: 700;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 19px;
+  font-weight: 400;
   padding: 0 10px 18px;
-  letter-spacing: -0.02em;
 }
 
 .brand-dot {
@@ -278,8 +281,9 @@ textarea::placeholder {
 }
 
 .list-header h1 {
-  font-size: 20px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 26px;
   text-transform: capitalize;
 }
 
@@ -413,8 +417,9 @@ textarea::placeholder {
 }
 
 .detail h1 {
-  font-size: 20px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 27px;
   margin: 14px 0 4px;
 }
 
@@ -519,8 +524,9 @@ textarea::placeholder {
 }
 
 .compose h1 {
-  font-size: 20px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 26px;
 }
 
 .assist-note {
@@ -558,10 +564,12 @@ textarea::placeholder {
 
 .bubble {
   max-width: 88%;
+  width: fit-content;
   padding: 9px 13px;
   border-radius: 14px;
   font-size: 13.5px;
   white-space: pre-wrap;
+  overflow-wrap: break-word;
   animation: rise 0.2s ease both;
 }
 
@@ -670,8 +678,9 @@ textarea::placeholder {
 }
 
 .auth-card h1 {
-  font-size: 22px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 28px;
 }
 
 .auth-card p {
