@@ -6,6 +6,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/mail/Sidebar";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { NewMailNotifier } from "@/components/NewMailNotifier";
 
 export const metadata: Metadata = {
   title: "Processity Mail",
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <AuthGate>
+          <NewMailNotifier />
           <div className="app-shell">
             <Sidebar />
             <main className="main-view">{children}</main>

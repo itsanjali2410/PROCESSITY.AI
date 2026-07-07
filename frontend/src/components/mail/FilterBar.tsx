@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { EmailFilters } from "@/lib/types";
 import { toDateInput } from "@/lib/format";
+
+const DEBOUNCE_MS = 350;
 
 export function FilterBar({
   filters,
@@ -10,6 +13,30 @@ export function FilterBar({
   filters: EmailFilters;
   onChange: (filters: EmailFilters) => void;
 }) {
+  // Text inputs are typed locally and synced to the URL debounced — driving
+  // them straight from the URL drops keystrokes (router updates are async)
+  // and fires one Gmail search per keypress.
+  const [query, setQuery] = useState(filters.query ?? "");
+  const [sender, setSender] = useState(filters.sender ?? "");
+
+  // External changes (assistant filters, Clear button) update the fields
+  useEffect(() => {
+    setQuery(filters.query ?? "");
+    setSender(filters.sender ?? "");
+  }, [filters.query, filters.sender]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const nextQuery = query.trim() || undefined;
+      const nextSender = sender.trim() || undefined;
+      if (nextQuery !== filters.query || nextSender !== filters.sender) {
+        onChange({ ...filters, query: nextQuery, sender: nextSender });
+      }
+    }, DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, sender]);
+
   const hasFilters = Boolean(
     filters.query || filters.sender || filters.after || filters.before || filters.unread_only
   );
@@ -18,13 +45,13 @@ export function FilterBar({
     <div className="filter-bar">
       <input
         placeholder="Search"
-        value={filters.query ?? ""}
-        onChange={(e) => onChange({ ...filters, query: e.target.value || undefined })}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
       />
       <input
         placeholder="From (sender)"
-        value={filters.sender ?? ""}
-        onChange={(e) => onChange({ ...filters, sender: e.target.value || undefined })}
+        value={sender}
+        onChange={(e) => setSender(e.target.value)}
       />
       <input
         type="date"

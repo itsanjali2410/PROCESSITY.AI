@@ -2,9 +2,6 @@
 
 **Stack:** FastAPI (Python 3.13) · Next.js 15 (TypeScript) · Gmail API · any OpenAI-compatible LLM (Gemini by default)
 
-## Demo
-
-
 
 ## Setup
 
@@ -15,6 +12,7 @@
   - Authorized redirect URI: `http://localhost:8000/auth/callback`
   - OAuth consent screen in *Testing* mode — add your Gmail address as a **test user**
 - An LLM API key — free options: [Google AI Studio](https://aistudio.google.com) or [Groq](https://console.groq.com)
+- This has been implemented Uvicorn no requirement.txt is required uv sync install every thing venv creates as backend
 
 ### Backend
 
@@ -45,17 +43,6 @@ Open http://localhost:3000, sign in with Google, and try the assistant:
 cd backend && uv run pytest
 ```
 
-## Architecture
-
-```
-frontend/src/                      backend/src/
-  components/   UI                   routes/      thin HTTP/WS layer
-  lib/api.ts    backend client       services/
-  lib/uiActions.ts  executes           mail_service.py   all Gmail logic
-                assistant actions      ai_service.py     all LLM logic
-  lib/cache.ts  stale-while-           token_store.py    OAuth tokens
-                revalidate             core/        config, auth dependency
-```
 
 **How the assistant controls the UI.** The LLM gets five tools (`search_emails`, `get_email`, `open_email`, `fill_compose`, `send_email`). Executing them produces a list of `UIAction` objects returned to the frontend, which runs them — navigation, form fill (animated typing), filter application. Filters live in the URL query string, so the assistant and the manual filter controls drive the inbox through the same mechanism. The frontend sends the current view and open email id with every chat message, which is how "reply to this" works.
 
@@ -69,11 +56,10 @@ frontend/src/                      backend/src/
 
 ## Features
 
-Inbox / Sent / detail views with real Gmail data · compose & threaded replies · filters (keyword, sender, date range, unread) via UI and natural language · context-aware assistant with visible form-filling and send confirmation · real-time new-mail toast · conversation/thread view · dark mode toggle · backend test suite
+Inbox / Sent / detail views with real Gmail data · compose & threaded replies · filters (keyword, sender, date range, unread) via UI and natural language · context-aware assistant conversation/thread view · dark mode toggle · backend test suite
 
 ## What I'd improve with more time
 
-- Gmail Pub/Sub push instead of polling
 - Multi-user sessions (signed cookies, tokens in a DB)
 - Streaming assistant responses; richer email-preview cards in the chat panel
 - Pagination for large mailboxes; attachment support

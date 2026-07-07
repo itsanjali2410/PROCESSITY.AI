@@ -20,6 +20,7 @@ export interface EmailFilters {
   after?: string;
   before?: string;
   unread_only?: boolean;
+  limit?: number;
   folder?: "inbox" | "sent";
 }
 

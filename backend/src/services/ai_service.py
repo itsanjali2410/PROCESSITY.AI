@@ -38,6 +38,10 @@ TOOLS = [
                     "after": {"type": "string", "description": "ISO date, e.g. 2026-07-01"},
                     "before": {"type": "string", "description": "ISO date"},
                     "unread_only": {"type": "boolean"},
+                    "limit": {
+                        "type": "integer",
+                        "description": "How many emails to show, when the user asks for a specific number (default 25, max 100)",
+                    },
                 },
             },
         },
@@ -118,7 +122,9 @@ through your tools — searching, opening emails, and filling the compose form o
 Rules:
 - Today's date is {today}. Compute date filters from it (e.g. "last 10 days").
 - The user is currently on the "{current_view}" view.{open_email_note}
-- To show emails, use search_emails — the UI updates automatically with the results.
+- To show emails, use search_emails — the UI updates automatically with the results. \
+If the user asks for a specific number ("show 10 emails"), pass it as limit. In your reply, \
+say how many were found and which filters applied, e.g. "Found 7 unread emails from this week."
 - To open a specific email, first find its id via search_emails, then call open_email.
 - To draft an email or a reply, use fill_compose so the user sees the form fill in. \
 When replying, use get_email to read the original, address the reply to its sender, \
@@ -229,6 +235,14 @@ def run(creds: Credentials, payload: AssistantRequest) -> AssistantResponse:
     send_allowed = any(m.role == "assistant" for m in payload.messages)
 
     actions: list[UIAction] = []
+    done: list[str] = []  # human-readable record of completed tool work
+
+    def _partial(suffix: str) -> str:
+        """Errors mid-loop shouldn't hide work that already completed."""
+        if done:
+            return f"{'. '.join(done)}. ({suffix})"
+        return suffix
+
     for _ in range(MAX_TOOL_ROUNDS):
         try:
             response = client.chat.completions.create(
@@ -238,14 +252,14 @@ def run(creds: Credentials, payload: AssistantRequest) -> AssistantResponse:
             )
         except RateLimitError:
             return AssistantResponse(
-                message="The AI provider's rate limit was hit. Please wait a "
-                "minute and try again.",
+                message=_partial(
+                    "The AI provider's rate limit was hit — wait a minute before the next request."
+                ),
                 actions=actions,
             )
         except APIStatusError as exc:
             return AssistantResponse(
-                message=f"The AI provider returned an error ({exc.status_code}). "
-                "Please try again.",
+                message=_partial(f"The AI provider returned an error ({exc.status_code})."),
                 actions=actions,
             )
         choice = response.choices[0].message
@@ -263,7 +277,17 @@ def run(creds: Credentials, payload: AssistantRequest) -> AssistantResponse:
             messages.append(
                 {"role": "tool", "tool_call_id": call.id, "content": json.dumps(result)}
             )
+            if "error" not in result:
+                summaries = {
+                    "send_email": f"Your email to {args.get('to', '')} was sent",
+                    "fill_compose": "The compose form was filled in",
+                    "open_email": "Opened the email",
+                    "search_emails": f"Found {result.get('count', 0)} emails",
+                }
+                if summary := summaries.get(call.function.name):
+                    done.append(summary)
 
     return AssistantResponse(
-        message="I couldn't finish that in time — please try rephrasing.", actions=actions
+        message=_partial("I couldn't finish that in time — please try rephrasing."),
+        actions=actions,
     )

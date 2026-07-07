@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { invalidateCache, useCached } from "@/lib/cache";
@@ -15,7 +15,6 @@ export function EmailList({ folder }: { folder: "inbox" | "sent" }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [toast, setToast] = useState(false);
 
   const filters = useMemo<EmailFilters>(
     () => ({
@@ -25,6 +24,7 @@ export function EmailList({ folder }: { folder: "inbox" | "sent" }) {
       after: searchParams.get("after") ?? undefined,
       before: searchParams.get("before") ?? undefined,
       unread_only: searchParams.get("unread_only") === "true" || undefined,
+      limit: Number(searchParams.get("limit")) || undefined,
     }),
     [searchParams, folder]
   );
@@ -44,23 +44,24 @@ export function EmailList({ folder }: { folder: "inbox" | "sent" }) {
     api.listEmails(filters)
   );
 
-  // New mail: drop all cached lists, refetch this one, show a brief notice
+  // New mail: drop all cached lists and refetch (the global notifier toasts)
   useRealtimeMail(() => {
     invalidateCache("emails:");
     refresh();
-    setToast(true);
-    setTimeout(() => setToast(false), 4000);
   });
 
   const unread = emails.filter((e) => !e.is_read).length;
+  const currentLimit = filters.limit ?? 25;
+  const maybeMore = emails.length >= currentLimit && currentLimit < 100;
 
   return (
     <div className="list-page">
-      {toast && <div className="toast">New email received</div>}
       <div className="list-header">
         <h1>{folder}</h1>
         <span className="list-count">
-          {loading ? "loading" : `${emails.length} emails${unread ? `, ${unread} unread` : ""}`}
+          {loading
+            ? "loading"
+            : `showing ${emails.length} emails${unread ? `, ${unread} unread` : ""}`}
         </span>
       </div>
       <FilterBar filters={filters} onChange={setFilters} />
@@ -97,6 +98,20 @@ export function EmailList({ folder }: { folder: "inbox" | "sent" }) {
             );
           })}
         </ul>
+      )}
+      {!loading && maybeMore && (
+        <div className="show-more">
+          <span className="list-count">show more:</span>
+          {[10, 20, 50].map((step) => (
+            <button
+              key={step}
+              className="btn btn-ghost"
+              onClick={() => setFilters({ ...filters, limit: Math.min(currentLimit + step, 100) })}
+            >
+              +{step}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

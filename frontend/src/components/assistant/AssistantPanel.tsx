@@ -21,7 +21,10 @@ const CHAT_STORAGE_KEY = "assistant-chat:v1";
 export function AssistantPanel() {
   const router = useRouter();
   const pathname = usePathname();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // null = storage not read yet; persisting is disabled until then, so a
+  // reload can never overwrite the saved conversation with an empty one.
+  const [messages, setMessages] = useState<ChatMessage[] | null>(null);
+  const msgs = messages ?? [];
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -30,18 +33,27 @@ export function AssistantPanel() {
   const openEmailId = pathname.startsWith("/email/") ? pathname.split("/")[2] : undefined;
   const currentView = openEmailId ? "email_detail" : pathname.replace("/", "") || "inbox";
 
-  // Conversation survives page reloads
+  // Conversation survives page reloads (trim sanitizes older stored messages)
   useEffect(() => {
+    let restored: ChatMessage[] = [];
     try {
       const saved = localStorage.getItem(CHAT_STORAGE_KEY);
-      if (saved) setMessages(JSON.parse(saved));
+      if (saved) {
+        restored = (JSON.parse(saved) as ChatMessage[]).map((m) => ({
+          ...m,
+          content: m.content.trim(),
+        }));
+      }
     } catch {}
+    setMessages(restored);
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
-    } catch {}
+    if (messages !== null) {
+      try {
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+      } catch {}
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
 
@@ -55,7 +67,7 @@ export function AssistantPanel() {
   async function send(text: string) {
     if (!text.trim() || busy) return;
 
-    const nextMessages: ChatMessage[] = [...messages, { role: "user", content: text.trim() }];
+    const nextMessages: ChatMessage[] = [...msgs, { role: "user", content: text.trim() }];
     setMessages(nextMessages);
     setInput("");
     setBusy(true);
@@ -80,17 +92,17 @@ export function AssistantPanel() {
   }
 
   return (
-    <aside className="assistant">
+    <aside className="assistant-panel">
       <header className="assistant-header">
         Assistant
-        {messages.length > 0 && (
+        {msgs.length > 0 && (
           <button className="chat-clear" onClick={clearChat}>
             Clear
           </button>
         )}
       </header>
       <div className="assistant-body">
-        {messages.length === 0 && (
+        {msgs.length === 0 && (
           <>
             <p className="assistant-hint">
               I can drive the app for you: search and filter your mail, open emails, draft
@@ -105,7 +117,7 @@ export function AssistantPanel() {
             </div>
           </>
         )}
-        {messages.map((m, i) => (
+        {msgs.map((m, i) => (
           <div key={i} className={`bubble ${m.role}`}>
             {m.content}
           </div>
