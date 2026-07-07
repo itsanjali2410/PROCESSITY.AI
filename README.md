@@ -1,7 +1,7 @@
 # Processity Mail
 
 **Stack:** FastAPI (Python 3.13) · Next.js 15 (TypeScript) · Gmail API · any OpenAI-compatible LLM (Gemini by default)
-
+### Demo clips are in document dir
 
 ## Setup
 
