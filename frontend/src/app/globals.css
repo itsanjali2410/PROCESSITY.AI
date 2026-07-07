@@ -196,12 +196,11 @@ textarea::placeholder {
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 400;
-  padding: 0 10px 18px;
+  padding: 4px 10px 20px;
 }
 
 .brand-dot {
@@ -212,15 +211,72 @@ textarea::placeholder {
   display: inline-block;
 }
 
-.nav-link {
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.compose-btn {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
-  border-radius: 8px;
+  margin: 0 2px 18px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 650;
+  font-size: 14.5px;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+
+.compose-btn:hover {
+  box-shadow: var(--shadow);
+}
+
+.compose-btn:active {
+  transform: scale(0.98);
+}
+
+.compose-btn kbd {
+  margin-left: auto;
+  font: 600 11px var(--font-sans);
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 5px;
+  padding: 2px 7px;
+}
+
+:root[data-theme="dark"] .compose-btn kbd {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.nav-group {
+  display: grid;
+  gap: 2px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
   color: var(--muted);
   font-weight: 500;
+  font-size: 14.5px;
   transition: background 0.15s, color 0.15s;
+}
+
+.nav-link svg {
+  flex-shrink: 0;
 }
 
 .nav-link:hover {
@@ -229,9 +285,15 @@ textarea::placeholder {
 }
 
 .nav-link.active {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--surface-2);
+  color: var(--ink);
   font-weight: 650;
+}
+
+.nav-count {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .sidebar-footer {
@@ -546,11 +608,27 @@ textarea::placeholder {
 .assistant-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 16px;
   font-weight: 700;
   letter-spacing: -0.01em;
   border-bottom: 1px solid var(--border);
+}
+
+.chat-clear {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.chat-clear:hover {
+  color: var(--ink);
+  border-color: var(--muted);
 }
 
 .assistant-body {

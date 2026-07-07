@@ -1,18 +1,19 @@
 /** Display helpers so dates and senders render consistently everywhere. */
 
-/** Smart date: time for today, "Mon 14:05" this week, "3 Jul" this year, else "3 Jul 2025". */
+/** Smart date: "14:05" today, "Mon 14:05" this week, "3 Jul" this year, else "3 Jul 2025". */
 export function formatEmailDate(iso: string): string {
   const date = new Date(iso);
   if (isNaN(date.getTime())) return "";
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const daysAgo = (startOfToday.getTime() - date.getTime()) / 86_400_000;
+  const time = date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 
   if (date >= startOfToday) {
-    return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    return time;
   }
   if (daysAgo < 6) {
-    return date.toLocaleDateString(undefined, { weekday: "short" });
+    return `${date.toLocaleDateString(undefined, { weekday: "short" })} ${time}`;
   }
   if (date.getFullYear() === now.getFullYear()) {
     return date.toLocaleDateString(undefined, { day: "numeric", month: "short" });

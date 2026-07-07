@@ -5,6 +5,7 @@ could be swapped (e.g. Microsoft Graph) without touching the API surface.
 """
 
 import base64
+import html
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
@@ -64,7 +65,7 @@ def _to_summary(msg: dict) -> EmailSummary:
         thread_id=msg.get("threadId"),
         sender=_header(msg["payload"], "From"),
         subject=_header(msg["payload"], "Subject") or "(no subject)",
-        preview=msg.get("snippet", ""),
+        preview=html.unescape(msg.get("snippet", "")),  # Gmail snippets are HTML-escaped
         date=datetime.fromtimestamp(int(msg["internalDate"]) / 1000, tz=timezone.utc),
         is_read="UNREAD" not in msg.get("labelIds", []),
     )

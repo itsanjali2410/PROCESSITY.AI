@@ -43,22 +43,46 @@ export function ComposeForm() {
   const animated = useRef(false);
 
   useEffect(() => {
-    if (!hasPrefill || animated.current) return;
+    if (animated.current) return;
     animated.current = true; // guard against React strict-mode double-run
-    (async () => {
-      await typeInto(setTo, prefilled.to);
-      await typeInto(setSubject, prefilled.subject);
-      await typeInto(setBody, prefilled.body);
-      setAnimating(false);
-    })();
+    if (hasPrefill) {
+      (async () => {
+        await typeInto(setTo, prefilled.to);
+        await typeInto(setSubject, prefilled.subject);
+        await typeInto(setBody, prefilled.body);
+        setAnimating(false);
+      })();
+      return;
+    }
+    // No prefill: restore an unsent draft after a reload
+    try {
+      const draft = sessionStorage.getItem("compose-draft");
+      if (draft) {
+        const { to, subject, body } = JSON.parse(draft);
+        setTo(to ?? "");
+        setSubject(subject ?? "");
+        setBody(body ?? "");
+      }
+    } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep the draft while typing; cleared on successful send
+  useEffect(() => {
+    if (animating) return;
+    try {
+      sessionStorage.setItem("compose-draft", JSON.stringify({ to, subject, body }));
+    } catch {}
+  }, [to, subject, body, animating]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     setSending(true);
     try {
       await api.sendEmail({ to, subject, body, reply_to_message_id: replyTo });
+      try {
+        sessionStorage.removeItem("compose-draft");
+      } catch {}
       router.push("/sent");
     } catch (err) {
       console.error(err);

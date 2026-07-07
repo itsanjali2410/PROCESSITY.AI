@@ -62,7 +62,6 @@ frontend/src/                      backend/src/
 ## Decisions & trade-offs
 
 - **Provider-agnostic LLM.** The assistant speaks the OpenAI-compatible chat API, so switching Gemini → Groq → OpenAI is a `.env` change only.
-- **Real-time sync via polling, not Pub/Sub.** Gmail push needs a public HTTPS webhook plus a Cloud Pub/Sub topic — unreasonable for a locally-run demo. A 15s backend poll broadcasting over websockets gives the same UX with zero infrastructure. `poll_inbox()` is the single function to replace if Pub/Sub is wanted later.
 - **Human-in-the-loop sending, enforced server-side.** The model cannot call `send_email` in the same turn it drafts, or before the user has replied to a confirmation — guaranteed by code, not by prompt.
 - **Single-user token store.** OAuth tokens live in a local file with auto-refresh. Right-sized for the demo; the store is isolated in one module so a DB/session-based version slots in without touching Gmail logic.
 - **Two-layer cache.** Backend TTL cache over Gmail calls (lists 30s, immutable bodies 5min) plus frontend stale-while-revalidate, so navigation renders instantly. All caches invalidate on send, mark-read, and new-mail detection.

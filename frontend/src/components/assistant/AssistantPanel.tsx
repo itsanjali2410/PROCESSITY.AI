@@ -16,6 +16,8 @@ const SUGGESTIONS = [
   "Draft an email to someone@gmail.com",
 ];
 
+const CHAT_STORAGE_KEY = "assistant-chat:v1";
+
 export function AssistantPanel() {
   const router = useRouter();
   const pathname = usePathname();
@@ -28,9 +30,27 @@ export function AssistantPanel() {
   const openEmailId = pathname.startsWith("/email/") ? pathname.split("/")[2] : undefined;
   const currentView = openEmailId ? "email_detail" : pathname.replace("/", "") || "inbox";
 
+  // Conversation survives page reloads
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+      if (saved) setMessages(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    } catch {}
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
+
+  function clearChat() {
+    setMessages([]);
+    try {
+      localStorage.removeItem(CHAT_STORAGE_KEY);
+    } catch {}
+  }
 
   async function send(text: string) {
     if (!text.trim() || busy) return;
@@ -45,7 +65,7 @@ export function AssistantPanel() {
         current_view: currentView,
         open_email_id: openEmailId,
       });
-      setMessages([...nextMessages, { role: "assistant", content: res.message }]);
+      setMessages([...nextMessages, { role: "assistant", content: res.message.trim() }]);
       // This is where the assistant drives the UI
       executeUIActions(res.actions, router);
     } catch (err) {
@@ -61,7 +81,14 @@ export function AssistantPanel() {
 
   return (
     <aside className="assistant">
-      <header className="assistant-header">Assistant</header>
+      <header className="assistant-header">
+        Assistant
+        {messages.length > 0 && (
+          <button className="chat-clear" onClick={clearChat}>
+            Clear
+          </button>
+        )}
+      </header>
       <div className="assistant-body">
         {messages.length === 0 && (
           <>
